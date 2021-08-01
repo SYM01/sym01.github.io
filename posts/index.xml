@@ -6,7 +6,16 @@
     <description>Recent content in Posts on SYM01&#39;s BLOG</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sat, 05 Jun 2021 15:28:52 +0800</lastBuildDate><atom:link href="https://sym01.com/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Mon, 02 Aug 2021 02:28:33 +0800</lastBuildDate><atom:link href="https://sym01.com/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>利用 multipart boundary 绕过 WAF</title>
+      <link>https://sym01.com/posts/2021/bypass-waf-via-boundary-confusion/</link>
+      <pubDate>Mon, 02 Aug 2021 02:28:33 +0800</pubDate>
+      
+      <guid>https://sym01.com/posts/2021/bypass-waf-via-boundary-confusion/</guid>
+      <description>0x00 前言 WAF（Web Application Firewall）是很常见的 Web 安全基础设施，许多云厂商、大厂、乙方安全公司均有相应的产品。然而，不得不承认，WAF 只能</description>
+    </item>
+    
     <item>
       <title>构建一个安全可靠的 HTML 富文本过滤器</title>
       <link>https://sym01.com/posts/2021/how-to-make-a-secure-html-filter/</link>
