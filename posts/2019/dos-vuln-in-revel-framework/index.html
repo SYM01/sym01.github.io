@@ -81,7 +81,15 @@
 <p>由于<code>processElement()</code>函数中会自动解析传入参数的下标信息，<code>maxIndex</code>的值也变得容易控制，只需访问类似于下面的网址，即可制造一个足够大的<code>maxIndex</code>。</p>
 <div class="highlight"><pre class="chroma"><code class="language-txt" data-lang="txt">https://example.com/?keys[1234567890]=1
 </code></pre></div><p>访问上述网址后，服务器CPU和内存使用率将会迅速飙升，如图所示，最终导致<code>Revel</code>进程结束。</p>
-<p><img src="./htop.png" alt="htop"></p>
+<picture>
+    <source srcset="/posts/2019/dos-vuln-in-revel-framework/htop_hu45001586a89c78148cdb3ff66526cd1f_168906_1045x506_resize_q90_h2_lanczos_2.webp" type="image/webp" />
+  <img
+    src="./htop.png"
+    
+    loading="lazy"
+    decoding="async"
+  />
+</picture>
 <h2 id="0x02-利用条件">0x02 利用条件</h2>
 <p>一般情况下，<code>bindSlice</code>不会被自动调用，当且仅当<code>controller</code>的代码中获取了<code>slice</code>类型的参数时，该漏洞才能利用，如下面的两种情况。</p>
 <div class="highlight"><pre class="chroma"><code class="language-golang" data-lang="golang"><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="nx">App</span><span class="p">)</span> <span class="nf">Test1</span><span class="p">(</span><span class="nx">name</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="nx">revel</span><span class="p">.</span><span class="nx">Result</span> <span class="p">{</span>

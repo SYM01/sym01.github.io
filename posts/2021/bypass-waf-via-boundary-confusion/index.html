@@ -67,32 +67,112 @@ Content-Disposition: form-data; name=“field2”; filename=“example.txt”
 value2
 —boundary—
 </code></pre></div><p>那么只要满足上述协议要求，服务端就可以正常获取到字段内容了，如下图所示。
-<img src="./980F2804-97C8-43C8-A106-1238BA2EF1DE.png" alt="980F2804-97C8-43C8-A106-1238BA2EF1DE.png"></p>
+<picture>
+    <source srcset="/posts/2021/bypass-waf-via-boundary-confusion/980F2804-97C8-43C8-A106-1238BA2EF1DE_hub9179d1315e3e6adb71b9d22fceaf4fd_80749_2462x382_resize_q90_h2_lanczos_2.webp" type="image/webp" />
+  <img
+    src="./980F2804-97C8-43C8-A106-1238BA2EF1DE.png"
+    
+    loading="lazy"
+    decoding="async"
+  />
+</picture></p>
 <p>那么如果构造多个 boundary 会有什么效果？很遗憾，一些服务端实现（比如 Go 语言）不允许多个 boundary，数据传递失败：
-<img src="./3D93AC2B-78F4-4AE0-8115-7F9598E4F1E8.png" alt="3D93AC2B-78F4-4AE0-8115-7F9598E4F1E8.png"></p>
+<picture>
+    <source srcset="/posts/2021/bypass-waf-via-boundary-confusion/3D93AC2B-78F4-4AE0-8115-7F9598E4F1E8_hu445bac65aceb53033ab3820b944ecf7a_105409_2458x530_resize_q90_h2_lanczos_2.webp" type="image/webp" />
+  <img
+    src="./3D93AC2B-78F4-4AE0-8115-7F9598E4F1E8.png"
+    
+    loading="lazy"
+    decoding="async"
+  />
+</picture></p>
 <p>多个 Content-Type 倒是可行，然而多数服务端，包括 WAF 的实现，基本上只认第一个出现的 Content-Type 。</p>
 <p>只能另辟蹊径。</p>
 <h3 id="回到协议解析本身">回到协议解析本身</h3>
 <p>在 Go 语言的实现中，<code>multipart/form-data</code> 中对 boundary 的解析是通过 <a href="https://pkg.go.dev/mime#ParseMediaType"><code>mime.ParseMediaType</code></a> 实现的：
-<img src="./EC6E636A-C3F6-402C-B804-1D1331F01F3A.png" alt="EC6E636A-C3F6-402C-B804-1D1331F01F3A.png"></p>
+<picture>
+    <source srcset="/posts/2021/bypass-waf-via-boundary-confusion/EC6E636A-C3F6-402C-B804-1D1331F01F3A_hu8a5f30cf806ba372c88914d637b57057_141518_1488x630_resize_q90_h2_lanczos_2.webp" type="image/webp" />
+  <img
+    src="./EC6E636A-C3F6-402C-B804-1D1331F01F3A.png"
+    
+    loading="lazy"
+    decoding="async"
+  />
+</picture></p>
 <p>然而 <a href="https://pkg.go.dev/mime#ParseMediaType"><code>mime.ParseMediaType</code></a> 对 MediaType 参数的解析有个有趣的细节，正常情况下，参数不允许重复，如下图 190行 所示，这也是上文请求失败的原因。
-<img src="./FA7B1D3E-F4DA-4E43-88D8-B4FE670E46F4.png" alt="FA7B1D3E-F4DA-4E43-88D8-B4FE670E46F4.png"></p>
+<picture>
+    <source srcset="/posts/2021/bypass-waf-via-boundary-confusion/FA7B1D3E-F4DA-4E43-88D8-B4FE670E46F4_hu4d3076d4fc264ecc00b6eca11286f3a8_237199_1264x1242_resize_q90_h2_lanczos_2.webp" type="image/webp" />
+  <img
+    src="./FA7B1D3E-F4DA-4E43-88D8-B4FE670E46F4.png"
+    
+    loading="lazy"
+    decoding="async"
+  />
+</picture></p>
 <p>然而在 203行 处，却允许参数的<strong>覆盖</strong>，只要目标参数满足 <a href="https://datatracker.ietf.org/doc/html/rfc2231#section-3">RFC 2231</a> 的格式。<a href="https://datatracker.ietf.org/doc/html/rfc2231#section-3">RFC 2231</a>中描述了一种名为 <code>Parameter Value Continuations</code> 的规范，其核心部分如下图所示，大意是一个参数<code>URL</code>，可以等价拆成两个分别名为<code>URL*0</code>、<code>URL*1</code>的参数。
-<img src="./7D8453CC-45F6-4D69-96D6-D507ADADFF7F.png" alt="7D8453CC-45F6-4D69-96D6-D507ADADFF7F.png"></p>
+<picture>
+    <source srcset="/posts/2021/bypass-waf-via-boundary-confusion/7D8453CC-45F6-4D69-96D6-D507ADADFF7F_hu241093be7ffbd822903da8d4e11ead21_76036_1120x398_resize_q90_h2_lanczos_2.webp" type="image/webp" />
+  <img
+    src="./7D8453CC-45F6-4D69-96D6-D507ADADFF7F.png"
+    
+    loading="lazy"
+    decoding="async"
+  />
+</picture></p>
 <p>那么，boundary 能否通过同样的方式覆盖呢？实际测试一下，发现可行。Go 会将<code>boundary*0=&quot;real-&quot;;boundary*1=&quot;boundary&quot;</code> 当作最终的 boundary 。
-<img src="./82975742-B2FE-4EAD-A6A5-D1525696C787.png" alt="82975742-B2FE-4EAD-A6A5-D1525696C787.png"></p>
+<picture>
+    <source srcset="/posts/2021/bypass-waf-via-boundary-confusion/82975742-B2FE-4EAD-A6A5-D1525696C787_hub091f6d7b79794396269db3b4a67d987_120193_2460x578_resize_q90_h2_lanczos_2.webp" type="image/webp" />
+  <img
+    src="./82975742-B2FE-4EAD-A6A5-D1525696C787.png"
+    
+    loading="lazy"
+    decoding="async"
+  />
+</picture></p>
 <h3 id="绕过某云-waf">绕过某云 WAF</h3>
 <p>上节中提到的怪异但符合<code>Parameter Value Continuations</code> 规范的数据包，应该是一个绕过 WAF 的神器。笔者随即写了一个存在 SQL 注入漏洞的服务，挂在某国内领头羊云厂商的 WAF 后面进行测试，证实了这个猜想。</p>
 <p>这个测试服务的 <code>id</code> 字段存在注入，正常情况下，因为没有任何攻击特征，WAF 不会拦截：
-<img src="./7232CF94-E2EF-45D1-B7ED-684F0F57929B.png" alt="7232CF94-E2EF-45D1-B7ED-684F0F57929B.png"></p>
+<picture>
+    <source srcset="/posts/2021/bypass-waf-via-boundary-confusion/7232CF94-E2EF-45D1-B7ED-684F0F57929B_huc3e517344593c5d7ae8cff4d5b9704d4_108304_2450x472_resize_q90_h2_lanczos_2.webp" type="image/webp" />
+  <img
+    src="./7232CF94-E2EF-45D1-B7ED-684F0F57929B.png"
+    
+    loading="lazy"
+    decoding="async"
+  />
+</picture></p>
 <p>进行注入，WAF 会正常拦截：
-<img src="./F9AB457D-3A91-4EB4-A218-77163869273F.png" alt="F9AB457D-3A91-4EB4-A218-77163869273F.png"></p>
+<picture>
+    <source srcset="/posts/2021/bypass-waf-via-boundary-confusion/F9AB457D-3A91-4EB4-A218-77163869273F_hud59d1bdbe18be739c3c470d3d2e0ba53_450465_2458x1278_resize_q90_h2_lanczos_2.webp" type="image/webp" />
+  <img
+    src="./F9AB457D-3A91-4EB4-A218-77163869273F.png"
+    
+    loading="lazy"
+    decoding="async"
+  />
+</picture></p>
 <p>然而当我们请出 <a href="https://datatracker.ietf.org/doc/html/rfc2231#section-3">RFC 2231</a> 大爷，整个注入攻击变得畅通无阻。
-<img src="./F67A0842-26E6-47F6-B31F-8A412A470091.png" alt="F67A0842-26E6-47F6-B31F-8A412A470091.png"></p>
+<picture>
+    <source srcset="/posts/2021/bypass-waf-via-boundary-confusion/F67A0842-26E6-47F6-B31F-8A412A470091_hu9ac4f13faf95e4dad1b0dfef1141e691_153266_2456x590_resize_q90_h2_lanczos_2.webp" type="image/webp" />
+  <img
+    src="./F67A0842-26E6-47F6-B31F-8A412A470091.png"
+    
+    loading="lazy"
+    decoding="async"
+  />
+</picture></p>
 <p>本质上是利用了 WAF 和 服务端 的协议解析差异来绕过防护的，应当可以绕过一大票 WAF 产品。这里没有一一测试各家产品，不是为了避免拿来党，主要还是因为懒。</p>
 <h2 id="0x02-举一反三">0x02 举一反三</h2>
 <p>上述绕过方式是基于 <a href="https://datatracker.ietf.org/doc/html/rfc2231#section-3">RFC 2231</a> 的，因此其它支持  <a href="https://datatracker.ietf.org/doc/html/rfc2231#section-3">RFC 2231</a>  的服务端实现也应当可以绕过。笔者对比较流行的 Python 框架 —— Flask 进行了测试，毫无意外地利用成功了。然而 Flask 的服务端实现和 Go 有细微的差异，最终解析出来的 boundary 参数，会拼接原始的 boundary 参数，如下图所示。
-<img src="./76363B51-0E0C-4B6D-A1A0-56DD27A84E26.png" alt="76363B51-0E0C-4B6D-A1A0-56DD27A84E26.png"></p>
+<picture>
+    <source srcset="/posts/2021/bypass-waf-via-boundary-confusion/76363B51-0E0C-4B6D-A1A0-56DD27A84E26_hu0c70246b7f66314b21ad182834a60a3f_137322_2454x600_resize_q90_h2_lanczos_2.webp" type="image/webp" />
+  <img
+    src="./76363B51-0E0C-4B6D-A1A0-56DD27A84E26.png"
+    
+    loading="lazy"
+    decoding="async"
+  />
+</picture></p>
 <p>其它语言、框架应有类似的特性。</p>
 <h2 id="0x03-总结">0x03 总结</h2>
 <p>WAF 绕过的本质是利用了 WAF 和 服务端 的协议解析差异。类似的差异应该还有许多。最后重复一下一开始提到的观点：WAF 并不可靠，不要过度依赖 WAF。</p>
