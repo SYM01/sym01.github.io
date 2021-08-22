@@ -1,0 +1,85 @@
+<!doctype html><html>
+<head>
+<title>利用 URN 绕过 URL 检查 // SYM01's BLOG</title>
+<meta charset=utf-8>
+<meta name=generator content="Hugo">
+<meta name=viewport content="width=device-width,initial-scale=1">
+<meta name=author content="SYM01">
+<meta name=description content>
+<link rel=stylesheet href=/css/main.min.a01dfcfaeb068a04422983e4e81f02c0158aca88c0c3be786620bb974cce87a2.css>
+</head>
+<body>
+<header class=app-header>
+<a href=/><img class=app-header-avatar src=/avatar2.svg></a>
+<h1>SYM01's BLOG</h1>
+<p>Stay Young, Stay Naive.</p>
+<div class=app-header-social>
+<a target=_blank href=https://github.com/SYM01><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37.0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44.0 0020 4.77 5.07 5.07.0 0019.91 1S18.73.65 16 2.48a13.38 13.38.0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07.0 005 4.77 5.44 5.44.0 003.5 8.55c0 5.42 3.3 6.61 6.44 7A3.37 3.37.0 009 18.13V22"/></svg></a>
+</div>
+</header>
+<main class=app-container>
+<a class=search href=/search/><svg t="1573031963095" class="icon" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M1008.64 933.302857 866.011429 790.674286A484.937143 484.937143.0 00830.902857 146.285714a486.4 486.4.0 00-684.617143.0 486.4 486.4.0 000 688.274286A489.325714 489.325714.0 00487.862857 972.8a477.622857 477.622857.0 00159.451429-27.062857 52.662857 52.662857.0 0032.914285-68.022857A53.394286 53.394286.0 00612.205714 844.8a380.342857 380.342857.0 11146.285715-89.965714 52.662857 52.662857.0 000 73.142857l177.737142 177.737143a53.394286 53.394286.0 0037.302858 15.36 54.857143 54.857143.0 0038.034285-15.36A54.125714 54.125714.0 001008.64 933.302857z" p-id="2846" fill="currentcolor"/></svg>
+<span>搜索</span>
+</a>
+<article class=post>
+<header class=post-header>
+<h1 class=post-title>利用 URN 绕过 URL 检查</h1>
+<div class=post-meta>
+<div><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+2021-08-22 16:50
+</div>
+<div><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+1 min read
+</div><div><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tag"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83.0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7" y2="7"/></svg>
+<a class=tag href=https://sym01.com/tags/bypass/>Bypass</a><a class=tag href=https://sym01.com/tags/javascript/>Javascript</a></div></div>
+</header>
+<div class=post-content>
+<h2 id=0x00-前言>0x00 前言</h2>
+<p>最近痴迷于看 RFC 及各类规范文档，从中发现一些有趣的利用。刚好前段时间发现了一处有趣的特性，成功绕过了某个知名站点的 XSS 防御，最终执行 XSS 攻击。本来以为只是一个小 trick，后来被某偶像拿来出了道 CTF 题目，觉得有必要分享一下。</p>
+<h2 id=0x01-一个真实-case-及其绕过>0x01 一个真实 case 及其绕过</h2>
+<p>几个月前发现某网站上有类似于下面的逻辑，会从 URL 中取 <code>next</code> 参数的值，并解析出 <code>pathname</code> 部分，执行跳转。</p>
+<div class=highlight><pre tabindex=0 class=chroma><code class=language-js data-lang=js>    <span class=kr>const</span> <span class=nx>getParam</span> <span class=o>=</span> <span class=p>(</span><span class=nx>key</span><span class=p>)</span> <span class=p>=&gt;</span> <span class=p>{</span>
+      <span class=k>return</span> <span class=k>new</span> <span class=nx>URL</span><span class=p>(</span><span class=nx>location</span><span class=p>).</span><span class=nx>searchParams</span><span class=p>.</span><span class=nx>get</span><span class=p>(</span><span class=nx>key</span><span class=p>)</span>
+    <span class=p>}</span>
+
+    <span class=kr>const</span> <span class=nx>nextURL</span> <span class=o>=</span> <span class=nx>getParam</span><span class=p>(</span><span class=s1>&#39;next&#39;</span><span class=p>)</span>
+    <span class=k>if</span> <span class=p>(</span><span class=nx>nextURL</span><span class=p>)</span> <span class=p>{</span>
+      <span class=kr>const</span> <span class=nx>u</span> <span class=o>=</span> <span class=k>new</span> <span class=nx>URL</span><span class=p>(</span><span class=nx>nextURL</span><span class=p>)</span>
+      <span class=nx>location</span><span class=p>.</span><span class=nx>href</span> <span class=o>=</span> <span class=s2>&#34;&#34;</span> <span class=o>+</span> <span class=nx>u</span><span class=p>.</span><span class=nx>pathname</span>
+    <span class=p>}</span>
+</code></pre></div><p>老司机应当可以发现，如果 <code>u.pathname</code> 能够以 <code>javascript:</code> 开头，那么就可以执行 XSS 攻击了。然而，pathname 会多带一个 &lsquo;/&rsquo; ，导致利用失败，无法 XSS。</p>
+<picture>
+<source srcset=/posts/2021/bypassing-url-check-via-urn/screenshot-20210822-170024_hu172d3693eebefd6ffb4f3bbcc8322113_16827_776x68_resize_q90_h2_lanczos_3.webp type=image/webp>
+<img src=./screenshot-20210822-170024.png loading=lazy decoding=async>
+</picture>
+<p>爱折腾的人怎么会止步于此呢，这个问题的突破点在于 <code>new URL(M).pathname</code> 。根据<a href=https://url.spec.whatwg.org/#dom-url-pathname>规范</a>，如果<code>cannot-be-a-base-URL</code> 为 <code>true</code>，那么 <code>pathname</code> 等价于 <code>path[0]</code>。</p>
+<picture>
+<source srcset=/posts/2021/bypassing-url-check-via-urn/screenshot-20210822-170445_hud1f616f4bc574c9ab98fe09810b445ce_74689_2098x302_resize_q90_h2_lanczos_3.webp type=image/webp>
+<img src=./screenshot-20210822-170445.png loading=lazy decoding=async>
+</picture>
+<p>刚好规范中就给出了满足这类条件的 case，如下图所示</p>
+<picture>
+<source srcset=/posts/2021/bypassing-url-check-via-urn/screenshot-20210822-170631_hu2c43e8f095e90ff414c4f473324edfc0_179486_2618x706_resize_q90_h2_lanczos_3.webp type=image/webp>
+<img src=./screenshot-20210822-170631.png loading=lazy decoding=async>
+</picture>
+<p>因此，只要构造 <code>?next=url:javascript:alert(location.origin)</code> 即可绕过改限制并执行 XSS 攻击。</p>
+<picture>
+<source srcset=/posts/2021/bypassing-url-check-via-urn/screenshot-20210822-170853_hu8b8ee910f8d50f548cdead4e5a6ca019_342704_2032x974_resize_q90_h2_lanczos_3.webp type=image/webp>
+<img src=./screenshot-20210822-170853.png loading=lazy decoding=async>
+</picture>
+<h2 id=0x02-举一反三>0x02 举一反三</h2>
+<p>经偶像指点，发现除了使用 URN 协议外，任意符合格式的 URI 都可以利用，如下所示。</p>
+<div class=highlight><pre tabindex=0 class=chroma><code class=language-js data-lang=js><span class=k>new</span> <span class=nx>URL</span><span class=p>(</span><span class=s1>&#39;a:javascript:alert(1)&#39;</span><span class=p>).</span><span class=nx>pathname</span>
+</code></pre></div><h2 id=0x03-总结>0x03 总结</h2>
+<ol>
+<li>规范、RFC 中有许多非常有趣的特性，没准可以拿来做一些绕过</li>
+<li>偶像🐂🍺</li>
+</ol>
+</div>
+</article>
+<script src=https://utteranc.es/client.js repo=SYM01/sym01.github.io issue-term=pathname theme=dark-blue crossorigin=anonymous async></script>
+</main>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-EH6W0S669D"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date),gtag('config','G-EH6W0S669D')</script>
+</body>
+</html>
